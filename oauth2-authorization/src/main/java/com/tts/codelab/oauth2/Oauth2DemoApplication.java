@@ -4,8 +4,10 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -35,6 +37,24 @@ public class Oauth2DemoApplication {
 	@EnableAuthorizationServer
 	public class OAuth2Configuration extends AuthorizationServerConfigurerAdapter {
 
+	    @Value("${mySecurity.keyStoreFileName}")
+	    private String keyStoreFileName;
+	    
+	    @Value("${mySecurity.secret}")
+        private String secret;
+	    
+	    @Autowired
+	    @Qualifier("jwtTokenEnhancer")
+	    private JwtAccessTokenConverter jwtTokenEnhancer;
+	    
+	    @Autowired
+        @Qualifier("jwtTokenStore")
+        private TokenStore jwtTokenStore;
+	    
+	    @Autowired
+        @Qualifier("authenticationManagerBean")
+        private AuthenticationManager authenticationManager;
+	    
 	    @Override
 	    public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
 	        // @formatter:off
@@ -56,21 +76,23 @@ public class Oauth2DemoApplication {
 	    
 	    @Override
 	    public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
-	        endpoints.tokenStore(tokenStore()).tokenEnhancer(jwtTokenEnhancer()).authenticationManager(authenticationManager);
+	        // @formatter:off
+	        endpoints
+	            .tokenStore(jwtTokenStore)
+	            .tokenEnhancer(jwtTokenEnhancer)
+	            .authenticationManager(authenticationManager);
+	        // @formatter:on
 	    }
 
-	    @Autowired
-	    @Qualifier("authenticationManagerBean")
-	    private AuthenticationManager authenticationManager;
-
 	    @Bean
-	    public TokenStore tokenStore() {
-	        return new JwtTokenStore(jwtTokenEnhancer());
+	    public TokenStore jwtTokenStore() {
+	        return new JwtTokenStore(jwtTokenEnhancer);
 	    }
 
 	    @Bean
 	    protected JwtAccessTokenConverter jwtTokenEnhancer() {
-	        KeyStoreKeyFactory keyStoreKeyFactory = new KeyStoreKeyFactory(new ClassPathResource("jwt.jks"), "codelab".toCharArray());
+            KeyStoreKeyFactory keyStoreKeyFactory = new KeyStoreKeyFactory(new ClassPathResource(keyStoreFileName),
+                    secret.toCharArray());
 	        JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
 	        converter.setKeyPair(keyStoreKeyFactory.getKeyPair("codelab"));
 	        return converter;
