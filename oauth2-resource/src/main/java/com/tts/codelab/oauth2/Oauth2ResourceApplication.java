@@ -34,15 +34,15 @@ public class Oauth2ResourceApplication {
 	public class JwtConfiguration {
 
 	    @Autowired
-	    JwtAccessTokenConverter jwtAccessTokenConverter;
+	    private JwtAccessTokenConverter jwtAccessTokenConverter;
 	    
 	    @Bean
-	    @Qualifier("tokenStore")
 	    public TokenStore tokenStore() {
 	        return new JwtTokenStore(jwtAccessTokenConverter);
 	    }
 
 	    @Bean
+	    @Qualifier("publicTokenConverter")
 	    protected JwtAccessTokenConverter jwtTokenEnhancer() {
 	        JwtAccessTokenConverter converter =  new JwtAccessTokenConverter();
 	        Resource resource = new ClassPathResource("public_key");
@@ -61,6 +61,9 @@ public class Oauth2ResourceApplication {
 	@EnableResourceServer
 	public class ResourceServerConfiguration extends ResourceServerConfigurerAdapter{
 
+	    @Autowired
+        TokenStore tokenStore;
+	    
 	    @Override
 	    public void configure(HttpSecurity http) throws Exception {
 	        http
@@ -77,11 +80,5 @@ public class Oauth2ResourceApplication {
 	    public void configure(ResourceServerSecurityConfigurer resources) throws Exception {
 	        resources.resourceId("foo").tokenStore(tokenStore);
 	    }
-
-	    @Autowired
-	    TokenStore tokenStore;
-
-	    @Autowired
-	    JwtAccessTokenConverter tokenConverter;
 	}
 }

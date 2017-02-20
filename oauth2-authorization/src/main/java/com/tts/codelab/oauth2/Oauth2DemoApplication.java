@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -27,30 +26,45 @@ import org.springframework.security.oauth2.provider.token.store.JwtTokenStore;
 import org.springframework.security.oauth2.provider.token.store.KeyStoreKeyFactory;
 
 @SpringBootApplication
+@Configuration
 public class Oauth2DemoApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(Oauth2DemoApplication.class, args);
 	}
 	
+	@Value("${mySecurity.keyStoreFileName}")
+    private String keyStoreFileName;
+    
+    @Value("${mySecurity.keyStoreAlias}")
+    private String keyStoreAlias;
+    
+    @Value("${mySecurity.secret}")
+    private String secret;
+    
+    @Autowired
+    private JwtAccessTokenConverter jwtTokenEnhancer;
+    
+    @Autowired
+    private TokenStore jwtTokenStore;
+    
+    @Bean
+    public TokenStore jwtTokenStore() {
+        return new JwtTokenStore(jwtTokenEnhancer);
+    }
+
+    @Bean
+    protected JwtAccessTokenConverter jwtTokenEnhancer() {
+        KeyStoreKeyFactory keyStoreKeyFactory = new KeyStoreKeyFactory(new ClassPathResource(keyStoreFileName),
+                secret.toCharArray());
+        JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
+        converter.setKeyPair(keyStoreKeyFactory.getKeyPair(keyStoreAlias));
+        return converter;
+    }
+    
 	@Configuration
 	@EnableAuthorizationServer
 	public class OAuth2Configuration extends AuthorizationServerConfigurerAdapter {
-
-	    @Value("${mySecurity.keyStoreFileName}")
-	    private String keyStoreFileName;
-	    
-	    @Value("${mySecurity.secret}")
-        private String secret;
-	    
-	    @Autowired
-	    @Qualifier("jwtTokenEnhancer")
-	    private JwtAccessTokenConverter jwtTokenEnhancer;
-	    
-	    @Autowired
-        @Qualifier("jwtTokenStore")
-        private TokenStore jwtTokenStore;
-	    
 	    @Autowired
         @Qualifier("authenticationManagerBean")
         private AuthenticationManager authenticationManager;
@@ -82,20 +96,6 @@ public class Oauth2DemoApplication {
 	            .tokenEnhancer(jwtTokenEnhancer)
 	            .authenticationManager(authenticationManager);
 	        // @formatter:on
-	    }
-
-	    @Bean
-	    public TokenStore jwtTokenStore() {
-	        return new JwtTokenStore(jwtTokenEnhancer);
-	    }
-
-	    @Bean
-	    protected JwtAccessTokenConverter jwtTokenEnhancer() {
-            KeyStoreKeyFactory keyStoreKeyFactory = new KeyStoreKeyFactory(new ClassPathResource(keyStoreFileName),
-                    secret.toCharArray());
-	        JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
-	        converter.setKeyPair(keyStoreKeyFactory.getKeyPair("codelab"));
-	        return converter;
 	    }
 	}
 	

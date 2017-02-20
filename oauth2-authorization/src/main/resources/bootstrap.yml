@@ -3,4 +3,5 @@ server:
   
 mySecurity:
   keyStoreFileName: jwt.jks
+  keyStoreAlias: codelab 
   secret: codelab
